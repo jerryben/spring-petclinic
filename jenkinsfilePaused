@@ -69,7 +69,13 @@ pipeline {
         stage('Deploy to Tomcat') {
             steps {
                 sh '''
-                docker cp target/sample-java-app.war tomcat:/usr/local/tomcat/webapps/
+                # Define variables
+                TOMCAT_USER=user
+                TOMCAT_HOST=tomcat-server-ip
+                TOMCAT_WEBAPPS_DIR=/usr/local/tomcat/webapps/
+
+                # Copy the WAR file to the Tomcat server
+                scp target/sample-java-app.war ${TOMCAT_USER}@${TOMCAT_HOST}:${TOMCAT_WEBAPPS_DIR}
                 '''
             }
         }
