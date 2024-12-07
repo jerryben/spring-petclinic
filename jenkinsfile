@@ -1,0 +1,86 @@
+pipeline {
+    agent any
+
+    tools {
+        jdk 'JDK11' // Reference the installed JDK in Jenkins
+        maven 'Maven3' // Reference the installed Maven in Jenkins
+    }
+
+    environment {
+        SCANNER_HOME = tool 'SonarQube Scanner' // Reference SonarQube
+        SONARQUBE_TOKEN = credentials('sonarqube-token') // Credential ID for SonarQube token
+    }
+
+    stages {
+        stage('Git Checkout') {
+            steps {
+                git branch: 'main', url: 'https://github.com/jerryben/spring-petclinic.git' // Replace with your repository
+            }
+        }
+
+        stage('Compile') {
+            steps {
+                sh 'mvn clean compile'
+            }
+        }
+
+        stage('Unit Test') {
+            steps {
+                sh 'mvn test'
+            }
+        }
+
+        stage('Code Analysis') {
+            steps {
+                withSonarQubeEnv('SonarQube') { // Configure in Jenkins
+                    sh '''
+                    $SCANNER_HOME/bin/sonar-scanner \
+                        -Dsonar.projectKey=sample-java-app \
+                        -Dsonar.sources=. \
+                        -Dsonar.host.url=http://172.17.0.5:9000 \
+                        -Dsonar.login=$SONARQUBE_TOKEN
+                    '''
+                }
+            }
+        }
+
+        stage('Build') {
+            steps {
+                sh 'mvn package'
+            }
+        }
+
+        stage('OWASP Dependency Check') {
+            steps {
+                dependencyCheck additionalArguments: '--scan target/', odcInstallation: 'OWASP Dependency-Check'
+            }
+        }
+
+        stage('Publish Reports') {
+            steps {
+                publishHTML(target: [
+                    reportDir: 'target',
+                    reportFiles: 'dependency-check-report.html',
+                    reportName: 'OWASP Report'
+                ])
+            }
+        }
+
+        stage('Deploy to Tomcat') {
+            steps {
+                sh '''
+                docker cp target/sample-java-app.war tomcat:/usr/local/tomcat/webapps/
+                '''
+            }
+        }
+    }
+
+    post {
+        always {
+            archiveArtifacts artifacts: '**/target/*.jar', allowEmptyArchive: true
+        }
+        failure {
+            slackSend channel: '#alerts', message: "Build Failed: ${currentBuild.fullDisplayName}"
+        }
+    }
+}
