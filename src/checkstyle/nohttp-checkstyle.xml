@@ -7,4 +7,7 @@
 	<module name="SuppressionFilter">
 		<property name="file" value="${config_loc}/nohttp-checkstyle-suppressions.xml"/>
 	</module>
+	<module name="NoHttp">
+    	<property name="allowedHttpUrls" value="http://172.17.0.3:9000,http://172.17.0.3:9000/dashboard,http://172.17.0.3:9000/api/ce/task"/>
+	</module>
 </module>
